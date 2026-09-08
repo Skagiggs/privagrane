@@ -1,0 +1,56 @@
+name: Release Publish
+
+# Se déclenche quand une PR est fermée vers master ; le job ne s'exécute que
+# si elle a bien été mergée (pas juste fermée) et vient d'une branche release/x.y.z.
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Extrait le numéro de version du nom de la branche
+        id: version
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          VERSION="${HEAD_REF#release/}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Nom de branche invalide, attendu release/x.y.z : $HEAD_REF"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Compresse le build de prod
+        run: (cd dist && zip -r "../privagrane-v${{ steps.version.outputs.version }}.zip" .)
+
+      - name: Tag le commit de master et publie la release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            "privagrane-v${{ steps.version.outputs.version }}.zip" \
+            --target master \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes
