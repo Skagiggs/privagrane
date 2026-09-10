@@ -1,11 +1,11 @@
 name: Release Publish
 
-# Se déclenche quand une PR est fermée vers master ; le job ne s'exécute que
+# Se déclenche quand une PR est fermée vers main ; le job ne s'exécute que
 # si elle a bien été mergée (pas juste fermée) et vient d'une branche release/x.y.z.
 on:
   pull_request:
     types: [closed]
-    branches: [master]
+    branches: [main]
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: master
+          ref: main
 
       - name: Extrait le numéro de version du nom de la branche
         id: version
@@ -45,12 +45,12 @@ jobs:
       - name: Compresse le build de prod
         run: (cd dist && zip -r "../privagrane-v${{ steps.version.outputs.version }}.zip" .)
 
-      - name: Tag le commit de master et publie la release
+      - name: Tag le commit de main et publie la release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
             "privagrane-v${{ steps.version.outputs.version }}.zip" \
-            --target master \
+            --target main \
             --title "v${{ steps.version.outputs.version }}" \
             --generate-notes
