@@ -1,13 +1,201 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>privagrane</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privagrane - Filigrane simple et privé</title>
+<meta name="description" content="Ajoutez un filigrane à vos documents. Le fichier reste sur votre machine, il n'est jamais envoyé à un serveur.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1f4e8c">
+<link rel="stylesheet" href="/src/fonts.css">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site-header">
+    <nav class="site-nav">
+      <a href="confidentialite.html">Confidentialité</a>
+      <a href="mentions-legales.html">Mentions légales</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Privagrane - Filigrane simple et privé</h1>
+    <div class="hero-row">
+      <p>Ajoutez un filigrane à vos documents. Le fichier reste sur votre machine, il n'est jamais envoyé à un serveur.</p>
+      <div class="hero-actions">
+        <a href="#outil" class="btn btn-primary">Filigraner un fichier</a>
+        <a href="#pourquoi" class="btn btn-secondary">Pourquoi ce site ?</a>
+      </div>
+    </div>
+  </section>
+
+  <main id="outil" class="tool">
+
+    <section class="panel">
+
+      <div class="field">
+        <span class="field-label">01 - Fichier local</span>
+        <label for="wm-file" class="dropzone" id="dropzone">
+          <span class="dropzone-title">Choisir un fichier</span>
+          <span class="dropzone-hint">PDF · PNG · JPG · WEBP</span>
+        </label>
+        <input id="wm-file" class="visually-hidden-input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp">
+        <div class="file-chip" id="file-chip" hidden>
+          <span class="file-chip-check">✓</span>
+          <span class="file-chip-name" id="file-chip-name"></span>
+        </div>
+        <p class="field-error" id="file-error" hidden></p>
+      </div>
+
+      <div class="field">
+        <span class="field-label">02 - Texte du filigrane</span>
+        <input type="text" id="wm-text" class="text-input" placeholder="CONFIDENTIEL" maxlength="60" value="CONFIDENTIEL">
+      </div>
+
+      <div class="field">
+        <span class="field-label">03 - Couleur</span>
+        <div class="swatches">
+          <button type="button" class="swatch" data-color="#c0392b" title="Rouge"></button>
+          <button type="button" class="swatch" data-color="#101828" title="Noir"></button>
+          <button type="button" class="swatch" data-color="#1f4e8c" title="Bleu"></button>
+          <button type="button" class="swatch" data-color="#6b7684" title="Gris"></button>
+          <label class="custom-color">
+            <span>Autre</span>
+            <input type="color" id="wm-color" value="#c0392b">
+          </label>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <span class="field-label">04 - Taille, opacité et orientation</span>
+
+        <div class="slider-field">
+          <div class="slider-head">
+            <span>Taille</span>
+            <span class="slider-value" id="size-label">40 %</span>
+          </div>
+          <input type="range" id="wm-size" min="5" max="100" step="1" value="40">
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-head">
+            <span>Opacité</span>
+            <span class="slider-value" id="opacity-label">28 %</span>
+          </div>
+          <input type="range" id="wm-opacity" min="5" max="100" step="1" value="28">
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-head">
+            <span>Orientation</span>
+            <span class="slider-value" id="rotation-label">-30°</span>
+          </div>
+          <input type="range" id="wm-rotation" min="-90" max="90" step="1" value="-30">
+        </div>
+
+        <button type="button" class="toggle-row" id="tile-toggle">
+          <span class="toggle-copy">
+            <strong>Répéter sur tout le document</strong>
+            <span id="tile-hint">Motif répété en diagonale</span>
+          </span>
+          <span class="toggle-track on" id="tile-track">
+            <span class="toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section class="preview-col">
+      <div class="preview-toolbar">
+        <span class="field-label">Aperçu</span>
+        <div class="pager" id="pager" hidden>
+          <button type="button" id="prev-page" aria-label="Page précédente">‹</button>
+          <span id="page-label">p. 1 / 1</span>
+          <button type="button" id="next-page" aria-label="Page suivante">›</button>
+        </div>
+      </div>
+
+      <div class="preview-stage" id="preview-stage">
+        <div class="placeholder" id="placeholder">
+          <div class="placeholder-doc">
+            <span class="line"></span>
+            <span class="line"></span>
+            <span class="line"></span>
+            <span class="stamp">TEXTE</span>
+          </div>
+          <p>Sélectionnez un document : l'aperçu est calculé directement sur votre machine.</p>
+        </div>
+        <canvas id="preview-canvas" hidden></canvas>
+        <div class="loading-overlay" id="loading-overlay" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Traitement du fichier…</span>
+        </div>
+      </div>
+
+      <button type="button" class="export-btn" id="export-btn" disabled>
+        <span id="export-label">Télécharger le fichier</span>
+      </button>
+    </section>
+  </main>
+
+  <section id="pourquoi" class="security">
+    <div class="security-head">
+      <div class="security-head-copy">
+        <h2>Pourquoi ce site existe</h2>
+      <p>Je suis développeur, et la confidentialité des données est un sujet qui me tient à cœur. J'avais besoin de
+        filigraner quelques documents perso (devis, pièces d'identité, relevés) et j'ai cherché un outil en ligne. La plupart
+        téléversent le fichier sur un serveur pour le traiter, y compris FiligraneFacile, l'outil mis en place par le gouvernement. Pour moi,
+        ça n'a pas de sens de faire transiter un document par un serveur quand tout le traitement peut se faire en local, dans
+        le navigateur. Alors j'ai fait Privagrane : le fichier ne sort jamais de votre ordinateur. Le code est open source,
+        vous pouvez y accéder <a href="https://github.com/Skagiggs/privagrane">ici</a>.</p>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="feature-icon">✕</span>
+        <h3>Rien n'est envoyé</h3>
+        <p>Le fichier est ouvert depuis votre disque et le résultat est enregistré au même endroit. Il ne transite par aucun
+        serveur, à aucun moment.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">✕</span>
+        <h3>Rien n'est conservé</h3>
+        <p>Sans serveur, il n'y a rien à conserver : pas de copie, pas de base de données, pas de sauvegarde. Fermer l'onglet
+        efface tout.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">✕</span>
+        <h3>Pas de compte, pas de suivi</h3>
+        <p>Rien à créer, rien à installer. Pas de cookie de suivi, pas de statistiques.</p>
+      </div>
+      <div class="feature-card highlight">
+        <span class="feature-icon solid">✓</span>
+        <h3>Vérifiable en une seconde</h3>
+        <p>Une fois la page chargée, coupez votre connexion : l'outil continue de filigraner et de télécharger normalement.</p>
+      </div>
+    </div>
+
+    <div class="transparency">
+      <div class="transparency-block grow">
+        <span class="eyebrow">Transparence</span>
+        <p>Les bibliothèques de rendu et d'écriture PDF ainsi que les polices sont auto-hébergées avec le site : aucune requête n'est faite vers un service tiers, même au premier chargement.</p>
+      </div>
+      <div class="transparency-block narrow">
+        <span class="eyebrow">Limite</span>
+        <p>Un filigrane est une marque dissuasive, pas un chiffrement. Il n'empêche pas techniquement la copie du document.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
 </html>
