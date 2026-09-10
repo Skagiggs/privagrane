@@ -1,7 +1,7 @@
 {
   "name": "filigrane-local",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Filigrane local - ajoute un filigrane à un PDF ou une image, entièrement dans le navigateur.",
   "type": "module",
   "scripts": {
