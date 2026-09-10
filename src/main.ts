@@ -1,6 +1,7 @@
 import type * as PdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type * as PdfLib from 'pdf-lib';
+import { detectKind, outName, paintWatermark, type DocKind } from './watermark';
 
 /**
  * Filigrane local - logique de filigranage 100% navigateur.
@@ -41,8 +42,6 @@ async function getPdfLib(): Promise<typeof PdfLib> {
   if (!pdfLibPromise) pdfLibPromise = import('pdf-lib');
   return pdfLibPromise;
 }
-
-type DocKind = 'pdf' | 'image' | '';
 
 interface WatermarkState {
   text: string;
@@ -136,14 +135,6 @@ function setError(message: string): void {
   dom.fileError.hidden = !message;
 }
 
-function fontSizeFor(w: number, h: number): number {
-  return Math.max(6, (state.size / 100) * Math.min(w, h) * (state.tile ? 0.16 : 0.28));
-}
-
-function outName(ext: string): string {
-  return (state.fileName || 'document').replace(/\.[^.]+$/, '') + '-filigrane.' + ext;
-}
-
 function download(blob: Blob, name: string): void {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -166,9 +157,10 @@ async function onFileSelected(file: File | null | undefined): Promise<void> {
     bytes = new Uint8Array(buf);
     state.mime = file.type;
 
-    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+    const kind = detectKind(file.type, file.name);
+    if (kind === 'pdf') {
       await loadPdf(file.name);
-    } else if (/^image\//.test(file.type)) {
+    } else if (kind === 'image') {
       await loadImage(file);
       state.hasFile = true;
       state.kind = 'image';
@@ -247,41 +239,15 @@ async function goPage(delta: number): Promise<void> {
 
 // ---------- watermark rendering (shared by preview, image export and PDF export) ----------
 
-/**
- * Paints the watermark onto a canvas already showing the source page/image.
- * The tiled pattern is deliberately dense - instances overlap rather than
- * leaving clean gaps - so it can't be cropped or inpainted out without also
- * damaging the underlying content.
- */
-function paintWatermark(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const text = state.text.trim();
-  if (!text) return;
-
-  const fs = fontSizeFor(w, h);
-  ctx.save();
-  ctx.globalAlpha = state.opacity / 100;
-  ctx.fillStyle = state.color;
-  ctx.font = '700 ' + fs + 'px Manrope, system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate((-state.rotation * Math.PI) / 180);
-
-  if (state.tile) {
-    const tw = ctx.measureText(text).width;
-    const stepX = tw + fs * 0.5;
-    const stepY = fs * 1.3;
-    const R = Math.hypot(w, h) / 2 + Math.max(stepX, stepY);
-    let row = 0;
-    for (let y = -R; y <= R; y += stepY) {
-      const off = (row % 2) * (stepX / 2);
-      for (let x = -R; x <= R; x += stepX) ctx.fillText(text, x + off, y);
-      row++;
-    }
-  } else {
-    ctx.fillText(text, 0, 0);
-  }
-  ctx.restore();
+function currentWatermarkOptions() {
+  return {
+    text: state.text,
+    color: state.color,
+    size: state.size,
+    opacity: state.opacity,
+    rotation: state.rotation,
+    tile: state.tile,
+  };
 }
 
 function drawPreview(): void {
@@ -298,7 +264,7 @@ function drawPreview(): void {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(base.canvas, 0, 0);
-  paintWatermark(ctx, w, h);
+  paintWatermark(ctx, w, h, currentWatermarkOptions());
 }
 
 // ---------- export ----------
@@ -310,7 +276,7 @@ async function exportImage(): Promise<void> {
     cv.toBlob(res, jpg ? 'image/jpeg' : 'image/png', 0.92),
   );
   if (!blob) throw new Error("échec de l'encodage de l'image");
-  download(blob, outName(jpg ? 'jpg' : 'png'));
+  download(blob, outName(state.fileName, jpg ? 'jpg' : 'png'));
 }
 
 // Raster scale for exported PDF pages, relative to their 72pt-per-inch size
@@ -333,7 +299,7 @@ async function exportPdf(): Promise<void> {
     cv.height = Math.round(viewport.height);
     const ctx = cv.getContext('2d')!;
     await page.render({ canvasContext: ctx, viewport }).promise;
-    paintWatermark(ctx, cv.width, cv.height);
+    paintWatermark(ctx, cv.width, cv.height, currentWatermarkOptions());
 
     const blob = await new Promise<Blob | null>((res) => cv.toBlob(res, 'image/png'));
     if (!blob) throw new Error('échec du rendu de la page ' + n);
@@ -344,7 +310,7 @@ async function exportPdf(): Promise<void> {
   }
 
   const out = await outDoc.save();
-  download(new Blob([out as BlobPart], { type: 'application/pdf' }), outName('pdf'));
+  download(new Blob([out as BlobPart], { type: 'application/pdf' }), outName(state.fileName, 'pdf'));
 }
 
 async function onExport(): Promise<void> {
