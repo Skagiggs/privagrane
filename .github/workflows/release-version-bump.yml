@@ -1,46 +1,15 @@
 name: Release Version Bump
 
-# Se déclenche à la création de n'importe quelle branche ; le job ne s'exécute
-# réellement que si son nom suit le format release/x.y.z (voir le `if` ci-dessous).
 on: create
 
-permissions:
-  contents: write
-
 jobs:
-  bump-version:
+  bump:
     if: github.ref_type == 'branch' && startsWith(github.ref_name, 'release/')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-
-      - name: Extrait le numéro de version du nom de la branche
-        id: version
-        run: |
-          VERSION="${GITHUB_REF_NAME#release/}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Nom de branche invalide, attendu release/x.y.z : $GITHUB_REF_NAME"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Met à jour la version dans package.json / package-lock.json
-        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
-
-      - name: Commit et push sur la branche release
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "Version déjà à jour, rien à committer."
-          else
-            git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Skagiggs/ci-workflows/.github/workflows/release-version-bump-node.yml@v1
+    with:
+      node-version: "24"
+      base-branch: main
+      rebase-onto: develop # à confirmer / adapter, voir NOTES-MIGRATION.md
